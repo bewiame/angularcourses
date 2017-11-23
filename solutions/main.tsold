@@ -1,0 +1,249 @@
+import 'reflect-metadata'
+import 'zone.js'
+
+import { SkipSelf, ElementRef, HostListener, OnInit, OnChanges, DoCheck, AfterViewInit, AfterContentInit, OnDestroy, Pipe, PipeTransform, EventEmitter, Output, Input, NgModule, Component, LOCALE_ID, Directive } from '@angular/core'
+import { BrowserModule } from '@angular/platform-browser'
+import { FormBuilder, FormControl, Validators, FormGroup, ReactiveFormsModule, FormsModule } from '@angular/forms'
+import { platformBrowserDynamic } from '@angular/platform-browser-dynamic'
+import { Http, HttpModule } from '@angular/http'
+import { ActivatedRoute, RouterModule, Route, RouterLink, RouterOutlet, Router } from '@angular/router'
+
+
+///////////////////////////////// attribute directive //////////////////////////////////
+@Directive({
+    selector:'[attract]'
+})
+export class AttractDirective {
+    @Input() attract:String;
+
+    constructor(private el:ElementRef){
+        console.log("we are in..." + el);
+    }
+
+    @HostListener("mouseenter") mouseEnter(){
+        console.log("mouse enter", this.el.nativeElement, this.attract);
+        this.el.nativeElement.style.backgroundColor = this.attract;
+    }
+
+    @HostListener("mouseleave") mouseOut(){
+        console.log("mouse leave", this.el.nativeElement);
+        
+        this.el.nativeElement.style.backgroundColor = 'white';
+    }
+
+}
+
+//////////////////////////////// custom validators /////////////////////////////////////
+function MyValidator(fc:FormControl){
+    if (fc.value == "john description") return null;
+    return {
+        validateMe: {
+            valid:false
+        }
+    }
+}
+
+/////////////////////////////// data objects ///////////////////////////////////////////
+class Todo {
+    title:String
+    duedate:Date
+    price:Number = 0;
+
+    constructor(_t:String, _d:Date){
+        this.title = _t;
+        this.duedate = _d;
+    }
+}
+
+/////////////////////////////// pipe objects ///////////////////////////////////////////
+@Pipe({ name:"MyPipe" })
+export class MyPipe implements PipeTransform, OnDestroy {
+    constructor(){
+        console.log("I am constructing pipe");
+    }
+    transform(value:string, args:string[]):string{
+        console.log("I am transforming...");
+       return value + args[0];
+    }
+    ngOnDestroy(){
+        console.log("I am done! goodbye....")
+    }
+}
+/////////////////////////////// component objects //////////////////////////////////////
+@Component({
+    selector:'my-dialog',
+    template:`<h1>
+        {{ title }}
+        <ng-content></ng-content>
+    </h1>`
+})
+export class Dialog implements OnInit, OnChanges, DoCheck, OnDestroy{
+    @Input() title:String = "title";
+    constructor(){
+        console.log("Dialog constructed"); 
+        console.log(this.title);       
+    }
+    ngOnInit(){
+        console.log("Dialog initalized");
+        console.log(this.title); 
+    }
+    ngOnDestroy(){
+        console.log("Dialog destroyed");
+    }
+    ngOnChanges(){
+        console.log("Dialog onchanges");
+    }
+    ngDoCheck(){
+        console.log("Dialog ondocheck");
+        
+    }
+}
+
+@Component({
+    selector:'todo-entry',
+    styles:[`
+        .error { color:red};
+        input.ng-valid + span { display:none };
+        input.ng-invalid.ng-dirty + span { display:block };
+    `],
+    template:`<form (ngSubmit)="saveTodo()" [formGroup]="todoForm">
+                <input type="text" name="title" formControlName="title" />
+                <input type="text" name="description" formControlName="description" />
+                <span class="error">U have to provide a value!</span>
+                <input type="submit" value="Save"  />
+              </form>
+
+            `
+})
+export class TodoEntryComponent {
+    todoForm:FormGroup;
+    @Output() todoSaved:EventEmitter<Todo> = new EventEmitter<Todo>()
+     
+    constructor(private fcb:FormBuilder){
+        this.todoForm = fcb.group({ 
+            title:['', [Validators.required]],
+            description:['', [Validators.required, MyValidator]]
+        });
+    }
+    saveTodo(a:any){
+        debugger;
+        if (this.todoForm.valid)
+            this.todoSaved.next(new Todo(this.todoForm.value.title, new Date())); 
+    }
+}
+
+@Component({
+    selector:'todo-detail',
+    template:`<div *ngIf="selectedItem">
+                Details for this item are: 
+                {{selectedItem.title | MyPipe:'!' }}
+                {{selectedItem.description }}
+                {{selectedItem.duedate | date }}
+                {{selectedItem.price | currency:'EUR':true}}
+             </div>
+            `
+})
+export class TodoDetailComponent {
+    @Input() selectedItem:Todo
+
+    constructor (private router:Router, private route:ActivatedRoute) {//}
+    //ngOnInit() {
+        this.selectedItem = new Todo((<any>this.route.params).value.id, new Date()); 
+        setTimeout(()=>{
+            this.router.navigateByUrl("/");
+        }, 5000);
+     }
+}
+
+abstract class ALogger {
+    log(line:string){}
+}
+
+class ConsoleLogger extends ALogger {
+    log(line:string){
+        console.log("LOG: " + line);
+    }
+}
+class SuperLogger extends ALogger {
+    log(line:string){
+        console.log("SUPERLOG: " + line);
+    }
+}
+
+@Component({
+    selector:'todo-list',
+    providers:[{provide:ALogger, useClass:SuperLogger}],
+    template:`A list of todos...<br/>
+                <ul *ngFor="let item of items;let i=index">
+                <li [routerLink]="['/todo',i]" >{{ item.title }}</li>
+             </ul>`
+})
+export class TodoListComponent {
+    @Input() items:Todo[];
+    @Output() todoSelected:EventEmitter<Todo> = new EventEmitter<Todo>(); 
+
+    constructor(http:Http, @SkipSelf() logger:ALogger) {
+        http.get('/todos.json').subscribe((res) => this.items = res.json());
+        logger.log("tester");
+     }
+    selectTodo(item:Todo){
+        this.todoSelected.next(item);
+    }
+}
+
+@Component({
+    selector:'my-app',
+    template:`
+        <p attract="green" >I am attributed </p>
+        <my-dialog [title]="title">
+            <div attract="red">custom header in here</div>
+        </my-dialog>
+            <router-outlet></router-outlet>
+            <todo-entry (todoSaved)="addTodo($event)"></todo-entry>
+            `
+})
+export class AppComponent {
+    title:String = "Hello world";
+    todos:Todo[] = [
+            new Todo("do this", new Date()), 
+            new Todo("do tkkhat", new Date()), 
+            new Todo("andsoon", new Date())
+    ];
+    selectedTodo:Todo;
+
+    constructor(http:Http) {
+       http.get('/todos.json').subscribe((res) => this.todos = res.json());
+    }
+    selectTodo(e:Todo){
+       // debugger;
+        this.selectedTodo = e;
+    }
+
+    addTodo(item:Todo){
+        this.todos.push(item); 
+    }
+}
+
+/////////////////////////////// module objects ///////////////////////////////////////////
+@NgModule({
+    imports:[BrowserModule, FormsModule, ReactiveFormsModule, HttpModule, RouterModule.forRoot([
+        { path: '', component: TodoListComponent },
+        { path: 'todo/:id', component: TodoDetailComponent }
+    ])],
+    providers: [
+        {
+            provide: LOCALE_ID,
+            useValue: 'ja-JP'
+        },
+        { provide:ALogger, useClass:ConsoleLogger}
+    ],
+    declarations:[AttractDirective, MyPipe, AppComponent, TodoDetailComponent, TodoListComponent, TodoEntryComponent, Dialog],
+    bootstrap:[AppComponent]
+})
+export class AppModule {}
+
+platformBrowserDynamic().bootstrapModule(AppModule);
+
+/////////////////////////////// end of file //////////////////////////////////////////////
+
+

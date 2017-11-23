@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <title></title>
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jasmine/1.3.1/jasmine.css" />
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/jasmine/1.3.1/jasmine.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/jasmine/1.3.1/jasmine-html.js"></script>
+        <script src="./test/myfirsttest.js"></script>
+        
+    </head>
+    <body>
+        <script>
+            // var myobj = {
+            //     sayName: function(){
+            //         console.log("name");
+            //         return "success";
+            //     }
+            // }
+            // function spy(obj, method, callthrough, retval){
+            //     var oldmethod = obj[method];
+            //     obj[method] = function () {
+            //         console.log("intercepted");
+            //         if (callthrough) oldmethod();
+            //         return retval;
+            //     }
+            // }
+            // console.log(myobj.sayName());
+            // spy(myobj, 'sayName', true, "unsuccessfull");
+            // console.log(myobj.sayName());
+        </script>
+        <script type="text/javascript">
+            window.addEventListener("load", function onLoad() {
+                var jasmineEnv = jasmine.getEnv();
+                var reporter = new jasmine.TrivialReporter();
+        
+                jasmineEnv.addReporter(reporter);
+                setTimeout(function () {
+                jasmineEnv.execute();
+                // Without this setTimeout, the specs don't always get execute in webKit browsers, I don't know why
+                }, 10);
+                window.removeEventListener("load", onLoad, true);
+            }, true);
+            </script>
+    </body>
+</html>
